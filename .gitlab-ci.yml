@@ -1,3 +1,41 @@
+variables:
+  # Default os (docker image)
+  os: ubuntu:18.04
+  # Default 'reference' tag for siconos
+  tag: 4.2.0
+  # Default ctest model. Warning : overwritten if set in schedules variables (as we expect)
+  ctest_build_model: Continuous
+
+image: $os
+
+before_script:
+   - export CTEST_MODEL=$ctest_build_model
+   - echo $CI_PROJECT_DIR
+   - apt update -qq > /dev/null
+   - apt install -y -qq cmake git-core wget make
+     libboost-dev libgmp-dev swig gcc gfortran g++ liblapack-dev
+     libatlas-base-dev lp-solve liblpsolve55-dev python3-dev
+     libpython3-dev bash swig doxygen python3-pip htop
+     libcppunit-dev python3-scipy python3-pytest valgrind python3-h5py > /dev/null
+
+# This job clone, build and install on default os (ubuntu)
+# siconos software, with the 'standard' config
+# (release, all components, without oce)
+# Installed path is transfered to next job (examples) using artifacts.
+ubuntu:install_siconos:
+  stage: build
+  script:
+    - "sh ci_gitlab/install_siconos.sh $os" 
+  artifacts:
+    paths:
+      - install-siconos
+  only:
+  - master
+
+
+# Job to generate documentation and web site
+# This (at the time) a manual job
+# that need to be activated by hand through gitlab interface
 make_doc:
   stage: build
   image: ubuntu:17.10
@@ -6,6 +44,7 @@ make_doc:
   artifacts:
     paths:
       - build/docs/build/html
+  when: manual
   only:
   - master
 

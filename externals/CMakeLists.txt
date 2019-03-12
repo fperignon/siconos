@@ -7,16 +7,7 @@ message("-- Set up for ${PROJECT_NAME}_${COMPONENT} library ...\n")
 # Name used for the target to be built
 set(COMPONENT_LIBRARY_NAME ${PROJECT_NAME}_${COMPONENT})
 
-# Define a Fortran interface file (FCMangle.hpp)
-#FortranCInterface_VERIFY(QUIET)
-if(NOT FortranCInterface_VERIFIED_C)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/DefaultMangle.h.in ${CMAKE_CURRENT_BINARY_DIR}/FCMangle.h)
-else()
-  FortranCInterface_HEADER(${CMAKE_CURRENT_BINARY_DIR}/FCMangle.h
-    MACRO_NAMESPACE "myF2C" 
-    SYMBOL_NAMESPACE "myF2C"
-    )
-endif()
+# -- source directories for externals --
 
 # --- Sources and headers ---
 # source directories for externals

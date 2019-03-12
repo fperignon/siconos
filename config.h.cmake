@@ -2,11 +2,13 @@
 #define SICONOSCONFIG_H
 
 #define WITH_CMAKE
-#cmakedefine HAVE_SICONOS_KERNEL
-#cmakedefine HAVE_SICONOS_IO
-#cmakedefine HAVE_SICONOS_MECHANICS
-#cmakedefine HAVE_SICONOS_CONTROL
-#cmakedefine HAVE_SICONOS_MECHANISMS
+#cmakedefine HAS_SICONOS_EXTERNALS
+#cmakedefine HAS_SICONOS_NUMERICS
+#cmakedefine HAS_SICONOS_KERNEL
+#cmakedefine HAS_SICONOS_CONTROL
+#cmakedefine HAS_SICONOS_MECHANICS
+#cmakedefine HAS_SICONOS_MECHANISMS
+#cmakedefine HAS_SICONOS_IO
 #cmakedefine HAVE_PATHFERRIS
 #cmakedefine HAVE_PATHVI
 #cmakedefine HAVE_SORT

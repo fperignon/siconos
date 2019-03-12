@@ -4,12 +4,6 @@
 # ===================================================
 include(SiconosTools)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RELEASE CACHE STRING
-    "Choose the type of build, options are: None Debug Release."
-    FORCE)
-endif()
-
 # =========== Windows stuff ... ===========
 include(WindowsSiconosSetup)
 
@@ -20,11 +14,14 @@ include(SiconosVersion)
 
 # File used to print tests setup messages.
 set(TESTS_LOGFILE ${CMAKE_BINARY_DIR}/tests.log)
+
 # get system architecture 
 # https://raw.github.com/petroules/solar-cmake/master/TargetArch.cmake
 include(TargetArch)
-target_architecture(SYSTEM_ARCHITECTURE)
-if(WITH_SYSTEM_INFO)
+target_architecture(SYSTEM_ARCHITECTURE) # This variable seems to be required
+# to set CMAKE_SWIG_FLAGS in wrap/CMakeLists.txt.
+
+if(WITH_SYSTEM_INFO) # User defined option, default = off
   include(CMakePrintSystemInformation)
   message(STATUS "SYSTEM ARCHITECTURE: ${SYSTEM_ARCHITECTURE}")
 endif()
@@ -60,39 +57,45 @@ set(tests_timeout 120 CACHE INTERNAL "Limit time for tests (in seconds)")
 get_standard_ext()
 set(SRC_EXTS ${ALL_EXTS})
 
-if(WITH_GIT)
+if(WITH_GIT) # User defined option, default = off
+  # Check if git is available
+  # and get last commit id (long and short).
+  # Saved in SOURCE_ABBREV_GIT_SHA1 and SOURCE_GIT_SHA1
+  # These vars are useful for tests logs and 'write_notes' macro.
   find_package(Git)
-  MESSAGE(STATUS "git executable : ${GIT_EXECUTABLE}")
-  MESSAGE(STATUS "git command : ${GITCOMMAND}")
-  MESSAGE(STATUS "git update options : ${GIT_UPDATE_OPTIONS}")
-     
-  SET(CTEST_GIT_COMMAND "${GIT_EXECUTABLE}" )
-  SET(UPDATE_COMMAND "${GITCOMMAND}")
-  SET(UPDATE_OPTIONS "${GIT_UPDATE_OPTIONS}")
-      
-  EXECUTE_PROCESS(COMMAND 
-    ${GIT_EXECUTABLE} log -n 1 --pretty=format:%h 
-    OUTPUT_VARIABLE SOURCE_ABBREV_GIT_SHA1
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  
-  EXECUTE_PROCESS(COMMAND 
-    ${GIT_EXECUTABLE} log -n 1 --pretty=format:%H
-    OUTPUT_VARIABLE SOURCE_GIT_SHA1
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  if(GIT_FOUND)
+    set(CTEST_GIT_COMMAND "${GIT_EXECUTABLE}" )     
+    execute_process(COMMAND 
+      ${GIT_EXECUTABLE} log -n 1 --pretty=format:%h 
+      OUTPUT_VARIABLE SOURCE_ABBREV_GIT_SHA1
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    
+    execute_process(COMMAND 
+      ${GIT_EXECUTABLE} log -n 1 --pretty=format:%H
+      OUTPUT_VARIABLE SOURCE_GIT_SHA1
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endif()
 endif()
 
+# Save date/time into BUILD_TIMESTAMP var
 string(TIMESTAMP BUILD_TIMESTAMP)
 
-# ---- Python ---
-# (interp and lib)
-# Warning FP : python is always required, at least
-# for siconos script.
-if(WITH_PYTHON_WRAPPER)
-  find_package(PythonFull REQUIRED)
+# ---- PYTHON SETUP ----
+# We force Python3!
+if(${CMAKE_VERSION} VERSION_GREATER "3.12.3")
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  if(WITH_PYTHON_WRAPPER)
+    find_package(Python3 COMPONENTS Development REQUIRED)
+  endif()
 else()
-  find_package(PythonInterp REQUIRED)
+  # Our FindPythonFull is just a copy of the one distributed
+  # with cmake > 3.12.
+  find_package(PythonFull COMPONENTS Interpreter REQUIRED)
+  if(WITH_PYTHON_WRAPPER)
+    find_package(PythonFull COMPONENTS Development REQUIRED)
+  endif()
 endif()
-get_filename_component(PYTHON_EXE_NAME ${PYTHON_EXECUTABLE} NAME)
+
 if(WITH_PYTHON_WRAPPER OR WITH_DOCUMENTATION)
   include(FindPythonModule)
   # --- xml schema. Used in tests. ---
@@ -104,7 +107,10 @@ if(WITH_PYTHON_WRAPPER OR WITH_DOCUMENTATION)
   endif()
 endif()
 
+# --- End of python conf ---
+
 # Choice of CSparse/CXSparse integer size
+# Note FP :  this should be in externals isn't it?
 IF(NOT DEFINED SICONOS_INT64)
   IF(NOT SIZE_OF_CSI)
     INCLUDE(CheckTypeSize)
@@ -125,10 +131,8 @@ ENDIF()
 
 # =========== install setup ===========
 
-# Install lib directory 32, 64 etc. on Fedora, Debian 
-# http://public.kitware.com/Bug/view.php?id=11964
-# See also http://www.cmake.org/cmake/help/v3.0/module/GNUInstallDirs.html?highlight=gnuinstalldirs
-include(GNUInstallDirs)
+# Provides install directory variables as defined by the GNU Coding Standards.
+include(GNUInstallDirs)  # It defines CMAKE_INSTALL_LIBDIR
 # Set prefix path for libraries installation
 # --> means that any library target will be installed
 # in CMAKE_INSTALL_PREFIX/_install_lib
@@ -142,9 +146,10 @@ endif()
 
 
 # --- RPATH stuff ---
-# See https://cmake.org/Wiki/CMake_RPATH_handling
 # Warning: RPATH settings must be defined before install(...) settings.
-if(FORCE_SKIP_RPATH)
+# Source : https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
+
+if(FORCE_SKIP_RPATH) # Build with no RPATH. Do we really need this option??
   set(CMAKE_SKIP_BUILD_RPATH TRUE)
 else()
   set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -164,14 +169,10 @@ endif(NOT FORCE_SKIP_RPATH)
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# The following settings were copied from
-# https://cmake.org/Wiki/CMake_RPATH_handling
-# to avoid the rpath issue that appears on OS X El Capitan
-
 # the RPATH to be used when installing, but only if it's not a system directory
 list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
 if("${isSystemDir}" STREQUAL "-1")
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${_install_lib}")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 endif()
 
 # List of cmake macros that will be distributed with siconos software.
@@ -179,14 +180,13 @@ endif()
 # or to configure projects depending on Siconos (e.g. siconos-tutorials)
 set(cmake_macros
   SiconosTools.cmake
-  FindQGLViewer.cmake
-  OutOfSourcesBuild.cmake
+  # FindQGLViewer.cmake
   FindPythonModule.cmake
   valgrind.supp
-  SiconosTools.cmake
   )
-foreach(file ${cmake_macros})
-  install(FILES cmake/${file} DESTINATION share/${PROJECT_NAME}/cmake)
+
+foreach(file IN LISTS cmake_macros)
+  install(FILES cmake/${file} DESTINATION share/siconos/cmake)
 endforeach()
 
 # =========== uninstall target ===========
@@ -195,8 +195,8 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
   IMMEDIATE @ONLY)
 
-
 if(WITH_PYTHON_WRAPPER)
+  # deal with files installed for python 
   add_custom_target(uninstall
     echo >> ${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt
     COMMAND cat ${CMAKE_CURRENT_BINARY_DIR}/python_install_manifest.txt >> ${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt
@@ -216,33 +216,19 @@ endforeach()
 # ========= Documentation =========
 if(WITH_DOCUMENTATION OR WITH_DOXY2SWIG OR WITH_DOXYGEN_WARNINGS)
   set(USE_DOXYGEN TRUE)
-  add_custom_target(upload
-    COMMENT documentation upload
-    COMMAND ${CMAKE_SOURCE_DIR}/Build/tools/publish.py -u ${GFORGE_USER} -s ${CMAKE_SOURCE_DIR} -b ${CMAKE_BINARY_DIR} -m)
 endif()
 
 if(WITH_DOCUMENTATION)
-  # temporary option?
   set(USE_SPHINX TRUE)
 endif()
 
-# =========== OpenMP ==========
-OPTION (WITH_OPENMP "Use OpenMP" OFF)
-IF(WITH_OPENMP)
-  FIND_PACKAGE(OpenMP)
-  IF(OPENMP_FOUND)
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    # Only applies to numerics code, which is in C (for now)
-    #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  ENDIF()
-ENDIF()
 
 # =========== use ccache if available ===========
-OPTION (WITH_CCACHE "Use ccache" OFF)
-IF(WITH_CCACHE)
+if(WITH_CCACHE)
   find_program(CCACHE_FOUND ccache)
   if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-  endif(CCACHE_FOUND)
-ENDIF()
+  endif()
+endif()
+
