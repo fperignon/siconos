@@ -15,7 +15,7 @@ before_script:
    - apt install -y -qq cmake git-core wget make
      libboost-dev libgmp-dev swig gcc gfortran g++ liblapack-dev
      libatlas-base-dev lp-solve liblpsolve55-dev python3-dev
-     libpython3-dev bash swig doxygen python3-pip htop
+     libpython3-dev bash swig doxygen python3-pip htop python3-numpy
      libcppunit-dev python3-scipy python3-pytest valgrind python3-h5py > /dev/null
 
 # This job clone, build and install on default os (ubuntu)

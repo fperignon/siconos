@@ -20,8 +20,9 @@ macro(LIBRARY_PROJECT_SETUP)
 
   # --- Collect source files from given directories ---
   # --> set ${COMPONENT}_SRCS
-  get_sources("${${COMPONENT}_DIRS}")
-  set(${COMPONENT}_SRCS ${${COMPONENT}_SRCS} ${SOURCES_FILES})
+  get_sources(${COMPONENT})
+  #  get_sources("${${COMPONENT}_DIRS}")
+  #  set(${COMPONENT}_SRCS ${${COMPONENT}_SRCS} ${SOURCES_FILES})
   # Unstable sources
   if(NOT WITH_${COMPONENT}_UNSTABLE)
     if(${COMPONENT}_Unstable_SRCS)
@@ -37,16 +38,6 @@ macro(LIBRARY_PROJECT_SETUP)
     endif()
   endif()
 
-  if(${COMPONENT}_EXCLUDE_SRCS)
-    foreach(_FILE ${${COMPONENT}_EXCLUDE_SRCS})
-      file(GLOB _GFILE ${_FILE})
-      if(_GFILE)
-        list(REMOVE_ITEM ${COMPONENT}_SRCS ${_GFILE})
-      else()
-        message("WARNING : file to be excluded NOT FOUND : ${_FILE}")
-      endif()
-    endforeach()
-  endif()
   # --- Collect headers ---
   # --> set ${COMPONENT}_HDRS (for installation)
   set(HDRS_DIRS ${${COMPONENT}_DIRS})

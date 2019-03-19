@@ -34,21 +34,38 @@ MACRO(APPEND_Fortran_FLAGS)
 ENDMACRO(APPEND_Fortran_FLAGS)
 
 # Scans DIRS (list of directories) and returns a list of all files in those dirs
-# matching extensions defined in SRC_EXTS list.
-# Results are saved in SOURCES_FILES
+# matching standard extensions for C/CXX/Fortran sources files.
+# 
 #
 # Usage:
-# set(src_dirs dir1 dir2)
-# get_sources(src_dirs)
-macro(get_sources)
+#
+# set(<COMPONENT>_DIRS  dir1 dir2)
+# get_sources(<COMPONENT>)
+#
+# Result : set (parent scope) <COMPONENT>_SRCS with all matching files
+# in dir1, dir2 ...
+#
+# Remarks:
+# - dir1, dir2 ... are relative to CMAKE_CURRENT_SOURCE_DIR
+# - files in <COMPONENT>_EXCLUDE_SRCS are excluded from <COMPONENT>_DIRS
+# 
+function(get_sources COMPONENT)
+  message("Scan sources dirs for component ${COMPONENT} ... ")
   set(SOURCES_FILES)
-  foreach(DIR ${ARGV})
-    foreach(_EXT ${SRC_EXTS})
-      file(GLOB FILES_LIST ${DIR}/*.${_EXT})
+  get_standard_ext()
+  foreach(DIR IN LISTS ${COMPONENT}_DIRS)
+    foreach(_EXT IN LISTS SRC_EXTS)
+      if(${CMAKE_VERSION} VERSION_GREATER "3.12.0")
+        file(GLOB FILES_LIST
+          RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS
+          ${DIR}/*.${_EXT})
+      else()
+        file(GLOB FILES_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${DIR}/*.${_EXT})
+      endif()
       if(FILES_LIST)
 	list(APPEND SOURCES_FILES ${FILES_LIST})
       endif()
-    endforeach()
+   endforeach()
   endforeach()
   if(SOURCES_FILES)
     list(LENGTH SOURCES_FILES _SOURCES_FILES_LEN)
@@ -56,7 +73,27 @@ macro(get_sources)
       list(REMOVE_DUPLICATES SOURCES_FILES)
     endif()
   endif()
-endmacro()
+
+  # Check if some sources are to be excluded from build
+  if(${COMPONENT}_EXCLUDE_SRCS)
+    foreach(_FILE IN LISTS ${COMPONENT}_EXCLUDE_SRCS)
+      if(${CMAKE_VERSION} VERSION_GREATER "3.12.0")
+        file(GLOB _GFILE CONFIGURE_DEPENDS ${_FILE})
+      else()
+        file(GLOB _GFILE ${_FILE})
+      endif()
+
+      if(_GFILE)
+        list(REMOVE_ITEM SOURCES_FILES ${_GFILE})
+      else()
+        message(WARNING "file to be excluded NOT FOUND : ${_FILE}")
+      endif()
+    endforeach()
+  endif()
+
+  
+  set(${COMPONENT}_SRCS ${SOURCES_FILES} PARENT_SCOPE)
+endfunction()
 
 # Scans DIRS (list of directories) and returns a list of all files in those dirs
 # matching extensions defined in HDR_EXTS list.
@@ -90,26 +127,24 @@ macro(get_headers DIRS)
   endif()
 endmacro()
 
+
 # -- returns a list of source files extension --
-# Results in var ALL_EXTS
+# Results in var SRC_EXTS
 macro(get_standard_ext)
-  set(ALL_EXTS)
+  set(SRC_EXTS)
   foreach(_EXT
       ${CMAKE_CXX_SOURCE_FILE_EXTENSIONS}
       ${CMAKE_C_SOURCE_FILE_EXTENSIONS}
-      ${CMAKE_Fortran_SOURCE_FILE_EXTENSIONS}
-      ${CMAKE_Java_SOURCE_FILE_EXTENSIONS}
-      ${CMAKE_RC_SOURCE_FILE_EXTENSIONS})
-    list(APPEND ALL_EXTS ${_EXT})
+      ${CMAKE_Fortran_SOURCE_FILE_EXTENSIONS})
+    list(APPEND SRC_EXTS ${_EXT})
   endforeach()
-  list(REMOVE_DUPLICATES ALL_EXTS)
+  list(REMOVE_DUPLICATES SRC_EXTS)
 endmacro()
 
-# Print cmake variable 'V' value
-MACRO(PRINT_VAR V)
+# Print cmake variable 'V' content
+macro(PRINT_VAR V)
   MESSAGE(STATUS "${V} = ${${V}}")
-ENDMACRO(PRINT_VAR V)
-
+endmacro()
 
 # =======================================
 # For a given package name, try to find
@@ -354,24 +389,6 @@ macro(init_to_default_option OPT)
      break()
    endif()
  endforeach()
-endmacro()
-
-
-# ------------------------------------
-# Append a directory _N into
-# the list of Examples executed by
-# target 'example'
-# ------------------------------------
-macro(ADD_EXAMPLE_DIRECTORY _N)
-  message("Adding example directory ${_N}")
-  # create binary dir and configure a CMakeLists.txt
-  set(current_dir ${CMAKE_CURRENT_BINARY_DIR}/${_N})
-  message("current dir is ... ${current_dir}")
-  file(MAKE_DIRECTORY ${current_dir})
-  configure_file(${CMAKE_SOURCE_DIR}/cmake/CMakeListsForExamples.cmake
-    ${current_dir}/CMakeLists.txt @ONLY)
-  # add the created directory to the build
-  add_subdirectory(${current_dir} ${current_dir})
 endmacro()
 
 # ------------------------------------
