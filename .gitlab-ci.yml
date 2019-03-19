@@ -40,7 +40,7 @@ make_doc:
   stage: build
   image: ubuntu:17.10
   script:
-    - "sh CI/make_siconos_doc.sh"
+    - "sh ci_gitlab/make_siconos_doc.sh"
   artifacts:
     paths:
       - build/docs/build/html
