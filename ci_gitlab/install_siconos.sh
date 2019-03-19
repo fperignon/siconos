@@ -7,6 +7,6 @@
 
 mkdir build-siconos
 cd build-siconos
-ctest -S ${CI_PROJECT_DIR}/CI/ctest_driver_install_siconos.cmake -Dmodel=$CTEST_MODEL -DSICONOS_INSTALL_DIR=${CI_PROJECT_DIR}/install-siconos -DOSNAME=$1 -DNO_SUBMIT=TRUE -V 
+ctest -S ${CI_PROJECT_DIR}/ci_gitlab/ctest_driver_install_siconos.cmake -Dmodel=$CTEST_MODEL -DSICONOS_INSTALL_DIR=${CI_PROJECT_DIR}/install-siconos -DOSNAME=$1 -DNO_SUBMIT=TRUE -V 
 
 make install
